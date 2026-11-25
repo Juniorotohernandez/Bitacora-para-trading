@@ -1,302 +1,1372 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>HERPLUS – Registro</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bitácora de Trading & Calculadora Pro</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            terminal: {
+              bg: '#090d16',
+              panel: '#111827',
+              card: '#161f33',
+              border: '#243049',
+              accent: '#2563eb',
+              emerald: '#10b981',
+              rose: '#f43f5e',
+              gold: '#f59e0b',
+              text: '#e2e8f0',
+              muted: '#94a3b8'
+            }
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    .glass{background:rgba(255,255,255,.82);backdrop-filter:saturate(140%) blur(10px)}
-    .toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);padding:.5rem .75rem;border-radius:.5rem;background:#0ea5e9;color:#fff;font-size:.85rem;box-shadow:0 10px 20px rgba(2,132,199,.3);opacity:0;transition:opacity .2s}
-    .toast.show{opacity:1}
-    .hint{font-size:.72rem}
-    button:focus,a:focus{outline:2px solid #6366f1;outline-offset:2px}
-    .input-ok{outline:2px solid #10b981}
-    .input-bad{outline:2px solid #ef4444}
+    body {
+      background-color: #090d16;
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+    }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #090d16; }
+    ::-webkit-scrollbar-thumb { background: #243049; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .drop-active {
+      border-color: #f59e0b !important;
+      background-color: rgba(245, 158, 11, 0.08) !important;
+    }
   </style>
 </head>
-<body class="bg-gradient-to-br from-indigo-50 via-white to-emerald-50 text-slate-800">
-  <header class="sticky top-0 z-20 bg-white/90 backdrop-blur border-b">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-indigo-600" aria-hidden="true"></div>
+<body class="min-h-screen flex flex-col antialiased selection:bg-terminal-gold selection:text-black">
+
+  <!-- TOAST CONTAINER -->
+  <div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
+
+  <!-- LIGHTBOX MODAL (COMPARATIVA ANTES / DESPUÉS) -->
+  <div id="lightbox-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 hidden items-center justify-center p-4" onclick="closeLightbox(event)">
+    <div class="bg-terminal-panel border border-terminal-border rounded-2xl max-w-6xl w-full max-h-[92vh] overflow-y-auto p-5 shadow-2xl" onclick="event.stopPropagation()">
+      <div class="flex flex-wrap items-center justify-between gap-3 pb-3 mb-4 border-b border-terminal-border">
         <div>
-          <h1 class="text-lg font-semibold leading-tight">HERPLUS</h1>
-          <p class="text-xs text-slate-500">Registro oficina virtual</p>
+          <span id="lb-badge" class="text-[11px] font-mono px-2 py-0.5 rounded bg-terminal-gold/20 text-terminal-gold font-bold">XAUUSD</span>
+          <h3 id="lb-title" class="text-base sm:text-lg font-bold text-white mt-1">Auditoría Visual de la Operación</h3>
+        </div>
+        <button onclick="closeLightbox()" class="px-3 py-1.5 rounded-xl bg-terminal-card hover:bg-terminal-rose text-white text-xs font-bold cursor-pointer">Cerrar ✕</button>
+      </div>
+
+      <div id="lb-images-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Populated dynamically -->
+      </div>
+
+      <div id="lb-details" class="mt-4 p-4 rounded-xl bg-terminal-bg border border-terminal-border text-xs text-terminal-text">
+        <!-- Trade summary -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ACCOUNTS MANAGER MODAL -->
+  <div id="accounts-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
+    <div class="bg-terminal-panel border border-terminal-border rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-terminal-border pb-3">
+        <h3 class="text-base font-bold text-white">Gestionar Mis Cuentas de Trading</h3>
+        <button onclick="toggleAccountsModal(false)" class="text-terminal-muted hover:text-white text-sm cursor-pointer">✕</button>
+      </div>
+
+      <div id="accounts-list-modal" class="space-y-2 max-h-60 overflow-y-auto">
+        <!-- Rendered by JS -->
+      </div>
+
+      <form onsubmit="addNewAccount(event)" class="pt-3 border-t border-terminal-border space-y-3">
+        <div class="text-xs font-bold text-terminal-gold">+ Agregar Nueva Cuenta</div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <input type="text" id="new-acc-name" required placeholder="Ej. Cuenta Real 2" class="px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs text-white" />
+          <input type="number" id="new-acc-balance" required step="0.01" placeholder="Balance ($)" class="px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          <select id="new-acc-type" class="px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs text-white">
+            <option value="Personal">Personal / Centavos</option>
+            <option value="Fondeo">Prueba de Fondeo</option>
+            <option value="Demo">Demo Práctica</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-terminal-accent hover:bg-blue-500 text-white font-bold text-xs cursor-pointer">
+          Guardar Cuenta en este Host
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== TOP NAVIGATION BAR ==================== -->
+  <header class="bg-terminal-panel/95 border-b border-terminal-border sticky top-0 z-30 backdrop-blur-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Left: Back to index.html + Title -->
+      <div class="flex items-center gap-3">
+        <a href="index.html" class="px-3 py-2 rounded-xl bg-terminal-card hover:bg-terminal-border border border-terminal-border text-xs font-semibold text-terminal-text flex items-center gap-1.5 transition" title="Volver a tu página principal index.html">
+          <span>←</span>
+          <span>Inicio</span>
+        </a>
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-terminal-gold to-amber-600 flex items-center justify-center text-black font-extrabold text-sm shadow">
+            BT
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-sm sm:text-base font-extrabold text-white tracking-tight">BITÁCORA & CALCULADORA PRO</h1>
+              <span class="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-terminal-emerald/15 border border-terminal-emerald/30 text-[10px] font-mono text-terminal-emerald">
+                <span class="w-1.5 h-1.5 rounded-full bg-terminal-emerald"></span> Guardado Local en Host
+              </span>
+            </div>
+            <p class="text-[11px] text-terminal-muted hidden sm:block">IndexedDB + Capturas de Entrada/Cierre + Gestión de Riesgo</p>
+          </div>
         </div>
       </div>
-      <a href="oficina.html" class="text-xs text-indigo-700 hover:underline">Ir a Oficina Virtual</a>
+
+      <!-- Right: Backup / Export / Accounts Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <button onclick="toggleAccountsModal(true)" class="px-3 py-2 rounded-xl bg-terminal-card hover:bg-terminal-border border border-terminal-border text-xs font-semibold text-terminal-gold cursor-pointer">
+          💼 Cuentas
+        </button>
+        <button onclick="exportBackupJSON()" class="px-3 py-2 rounded-xl bg-terminal-card hover:bg-terminal-border border border-terminal-border text-xs font-medium text-white cursor-pointer" title="Descargar copia completa con fotos">
+          ⬇ Respaldo JSON
+        </button>
+        <label class="px-3 py-2 rounded-xl bg-terminal-card hover:bg-terminal-border border border-terminal-border text-xs font-medium text-white cursor-pointer" title="Restaurar respaldo desde otro dispositivo">
+          ⬆ Importar
+          <input type="file" accept=".json" onchange="importBackupJSON(event)" class="hidden" />
+        </label>
+        <button onclick="exportTradesCSV()" class="px-3 py-2 rounded-xl bg-terminal-emerald/15 hover:bg-terminal-emerald/25 border border-terminal-emerald/40 text-xs font-semibold text-terminal-emerald cursor-pointer">
+          📊 CSV
+        </button>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-4 py-8">
-    <section class="max-w-lg mx-auto glass rounded-2xl p-6 shadow-lg">
-      <h2 class="text-xl font-semibold">Crea tu acceso</h2>
-      <p class="text-sm text-slate-600">Completa tus datos para activar tu Oficina Virtual.</p>
+  <!-- ==================== MAIN WORKSPACE ==================== -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-      <!-- Sponsor -->
-      <div class="mt-4 p-3 rounded-xl border bg-slate-50">
-        <div class="flex items-center justify-between">
-          <div>
-            <div class="text-xs text-slate-500">Sponsor asignado</div>
-            <div id="sponsorUser" class="text-sm font-medium">—</div>
-          </div>
-          <span id="sponsorStatus" class="px-2 py-0.5 rounded bg-slate-200 text-xs">Verificando…</span>
+    <!-- COMPACT PRE-SESSION DISCIPLINE BAR -->
+    <section class="bg-terminal-panel border border-terminal-border rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div class="flex items-center gap-2.5 shrink-0">
+        <span class="text-base">🛡️</span>
+        <div>
+          <div class="text-xs font-bold text-white uppercase tracking-wider">Checklist Pre-Sesión</div>
+          <div class="text-[11px] text-terminal-muted">Marca antes de apretar el gatillo</div>
         </div>
-        <p class="mt-1 text-[11px] text-slate-500">Si no vienes con un enlace de referido, se asignará <b>HERPLUS</b> como sponsor.</p>
+      </div>
+      <div id="pre-checklist-bar" class="flex flex-wrap items-center gap-2">
+        <!-- Injected via JS -->
+      </div>
+    </section>
+
+    <!-- ACCOUNT FILTER + KPI METRICS ROW -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="flex items-center gap-2.5">
+          <label for="filter-account" class="text-xs font-semibold text-terminal-muted">Vista de Métricas:</label>
+          <select id="filter-account" onchange="renderDashboardAndTrades()" class="px-3.5 py-2 rounded-xl bg-terminal-panel border border-terminal-border text-xs font-bold text-white focus:outline-none focus:border-terminal-gold">
+            <!-- Populated by JS -->
+          </select>
+        </div>
+        <div id="storage-indicator" class="text-[11px] font-mono text-terminal-muted">
+          Almacenamiento activo en este dominio/host
+        </div>
       </div>
 
-      <!-- FORM -->
-      <div class="grid gap-3 mt-5">
-        <div>
-          <label class="text-xs text-slate-500" for="username">Nombre de usuario</label>
-          <div class="relative">
-            <input id="username" class="w-full border rounded-lg px-3 py-2 pr-20" placeholder="tu_usuario" autocomplete="username" />
-            <span id="userChk" class="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-500">—</span>
-          </div>
-          <p class="hint text-slate-500">3–20 caracteres (letras, números y _). Debe ser único.</p>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-terminal-panel border border-terminal-border rounded-2xl p-4">
+          <div class="text-[11px] text-terminal-muted">Balance Actual</div>
+          <div id="kpi-balance" class="text-lg sm:text-xl font-extrabold font-mono text-white mt-1">$0.00</div>
+          <div id="kpi-balance-sub" class="text-[10px] text-terminal-gold mt-1 truncate">Cuenta activa</div>
         </div>
 
-        <div>
-          <label class="text-xs text-slate-500" for="email">Correo electrónico</label>
-          <input id="email" type="email" class="w-full border rounded-lg px-3 py-2" placeholder="tu@correo.com" autocomplete="email" />
+        <div class="bg-terminal-panel border border-terminal-border rounded-2xl p-4">
+          <div class="text-[11px] text-terminal-muted">PnL Neto</div>
+          <div id="kpi-pnl" class="text-lg sm:text-xl font-extrabold font-mono text-terminal-emerald mt-1">+$0.00</div>
+          <div id="kpi-trades-count" class="text-[10px] text-terminal-muted mt-1">0 cerradas</div>
         </div>
 
-        <div class="grid md:grid-cols-2 gap-3">
-          <div>
-            <label class="text-xs text-slate-500" for="pass">Código/Contraseña</label>
-            <div class="relative">
-              <input id="pass" type="password" class="w-full border rounded-lg px-3 py-2 pr-10" placeholder="mín. 6 caracteres" autocomplete="new-password" />
-              <button id="toggle1" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-sm">👁</button>
-            </div>
-          </div>
-          <div>
-            <label class="text-xs text-slate-500" for="pass2">Repite el código</label>
-            <div class="relative">
-              <input id="pass2" type="password" class="w-full border rounded-lg px-3 py-2 pr-10" placeholder="confirmación" autocomplete="new-password" />
-              <button id="toggle2" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-sm">👁</button>
-            </div>
-          </div>
+        <div class="bg-terminal-panel border border-terminal-border rounded-2xl p-4">
+          <div class="text-[11px] text-terminal-muted">Win Rate</div>
+          <div id="kpi-winrate" class="text-lg sm:text-xl font-extrabold font-mono text-white mt-1">0%</div>
+          <div id="kpi-wl-ratio" class="text-[10px] text-terminal-muted mt-1">0G / 0P</div>
         </div>
 
-        <div>
-          <label class="text-xs text-slate-500" for="whats">WhatsApp (incluye código de país)</label>
-          <input id="whats" class="w-full border rounded-lg px-3 py-2" placeholder="+5049XXXXXXX" autocomplete="tel" />
-          <p class="hint text-slate-500">Formato internacional: +código y número (8–15 dígitos).</p>
+        <div class="bg-terminal-panel border border-terminal-border rounded-2xl p-4">
+          <div class="text-[11px] text-terminal-muted">Profit Factor</div>
+          <div id="kpi-pf" class="text-lg sm:text-xl font-extrabold font-mono text-blue-400 mt-1">0.00</div>
+          <div class="text-[10px] text-terminal-muted mt-1">Meta &gt; 1.50</div>
         </div>
 
-        <div class="flex items-start gap-2 mt-1">
-          <input id="terms" type="checkbox" class="mt-1">
-          <label for="terms" class="text-xs text-slate-600">Acepto los términos y la política de privacidad.</label>
+        <div class="bg-terminal-panel border border-terminal-border rounded-2xl p-4">
+          <div class="text-[11px] text-terminal-muted">Disciplina Plan</div>
+          <div id="kpi-discipline" class="text-lg sm:text-xl font-extrabold font-mono text-terminal-gold mt-1">100%</div>
+          <div class="text-[10px] text-terminal-muted mt-1">Sin FOMO</div>
         </div>
 
-        <button id="submitBtn" type="button" class="mt-2 px-4 py-2 rounded-lg bg-indigo-600 text-white">Crear cuenta</button>
-        <p id="formMsg" class="text-xs mt-1" aria-live="polite"></p>
-
-        <div class="mt-4 p-3 rounded-xl border bg-emerald-50 text-emerald-700 text-xs">
-          <b>Gracias por registrarte.</b> En breve un asesor de HERPLUS se comunicará contigo vía WhatsApp para completar la activación y validar tus datos.
+        <div class="bg-terminal-panel border border-terminal-border rounded-2xl p-4">
+          <div class="text-[11px] text-terminal-muted">Abiertas Ahora</div>
+          <div id="kpi-open" class="text-lg sm:text-xl font-extrabold font-mono text-amber-400 mt-1">0</div>
+          <div class="text-[10px] text-terminal-muted mt-1">Pendientes cierre</div>
         </div>
       </div>
     </section>
+
+    <!-- TWO-COLUMN CORE: CALCULATOR (LEFT) + DUAL-SCREENSHOT JOURNAL FORM (RIGHT) -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- LEFT 5 COLS: RISK & LOT CALCULATOR -->
+      <div class="lg:col-span-5 bg-terminal-panel border border-terminal-border rounded-2xl p-5 space-y-4">
+        <div class="flex items-center justify-between border-b border-terminal-border pb-3">
+          <div>
+            <span class="text-[10px] font-mono uppercase tracking-wider text-terminal-gold font-bold">Paso 1 · Antes de Entrar</span>
+            <h2 class="text-base font-bold text-white">Calculadora de Riesgo y Lotaje</h2>
+          </div>
+          <button type="button" onclick="syncCalculatorWithAccount()" class="text-[11px] text-blue-400 hover:underline cursor-pointer">
+            Usar balance cuenta
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Cuenta</label>
+            <select id="calc-account" onchange="syncCalculatorWithAccount()" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs text-white">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Par / Activo</label>
+            <input type="text" id="calc-pair" list="pairs-datalist" value="XAUUSD" oninput="calculatePosition()" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono uppercase text-white" />
+            <datalist id="pairs-datalist">
+              <option value="XAUUSD">
+              <option value="BTCUSD">
+              <option value="EURUSD">
+              <option value="GBPUSD">
+              <option value="US30">
+              <option value="NAS100">
+            </datalist>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2.5">
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Dirección</label>
+            <select id="calc-side" onchange="calculatePosition()" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-bold text-white">
+              <option value="BUY">BUY (Compra)</option>
+              <option value="SELL">SELL (Venta)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Capital ($)</label>
+            <input type="number" id="calc-balance" value="30.14" step="0.01" oninput="calculatePosition()" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Riesgo (%)</label>
+            <input type="number" id="calc-risk-pct" value="3.3" step="0.1" min="0.1" max="50" oninput="calculatePosition()" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <div>
+            <label class="block text-[11px] text-blue-400 mb-1">Entrada</label>
+            <input type="number" id="calc-entry" value="3624.00" step="0.01" oninput="calculatePosition()" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-blue-500/40 text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-rose mb-1">Stop Loss</label>
+            <input type="number" id="calc-sl" value="3619.00" step="0.01" oninput="calculatePosition()" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-rose/40 text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-emerald mb-1">TP 1</label>
+            <input type="number" id="calc-tp1" value="3640.00" step="0.01" oninput="calculatePosition()" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-emerald/40 text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-emerald mb-1">TP 2</label>
+            <input type="number" id="calc-tp2" value="3646.16" step="0.01" oninput="calculatePosition()" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-emerald/40 text-xs font-mono text-white" />
+          </div>
+        </div>
+
+        <!-- Calculator Results Box -->
+        <div class="p-4 rounded-xl bg-terminal-bg border border-terminal-border space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-3 rounded-xl bg-terminal-panel border border-terminal-border">
+              <div class="text-[10px] text-terminal-muted uppercase">Lote Recomendado</div>
+              <div id="calc-res-lot" class="text-2xl font-extrabold font-mono text-terminal-gold mt-0.5">0.01</div>
+              <div id="calc-res-lot-note" class="text-[10px] text-terminal-muted mt-0.5">Mínimo estándar 0.01</div>
+            </div>
+            <div class="p-3 rounded-xl bg-terminal-panel border border-terminal-border">
+              <div class="text-[10px] text-terminal-muted uppercase">Riesgo en Dinero</div>
+              <div id="calc-res-risk-usd" class="text-2xl font-extrabold font-mono text-terminal-rose mt-0.5">$1.00</div>
+              <div id="calc-res-sl-pts" class="text-[10px] text-terminal-muted mt-0.5">SL: 5.00 pts</div>
+            </div>
+          </div>
+
+          <div class="space-y-1.5 text-xs pt-1">
+            <div class="flex justify-between">
+              <span class="text-terminal-muted">TP1 Estimado (Ratio <strong id="calc-rr1" class="text-white">1:3.2</strong>):</span>
+              <span id="calc-tp1-usd" class="font-mono font-bold text-terminal-emerald">+$16.00</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-terminal-muted">TP2 Estimado (Ratio <strong id="calc-rr2" class="text-white">1:4.4</strong>):</span>
+              <span id="calc-tp2-usd" class="font-mono font-bold text-terminal-emerald">+$22.16</span>
+            </div>
+          </div>
+
+          <div id="calc-alert" class="p-2.5 rounded-lg bg-terminal-emerald/10 border border-terminal-emerald/30 text-[11px] text-terminal-emerald">
+            ✓ Riesgo controlado dentro de los parámetros seguros.
+          </div>
+        </div>
+
+        <button type="button" onclick="sendCalculatorToForm()" class="w-full py-3 rounded-xl bg-terminal-gold hover:bg-amber-400 text-black font-extrabold text-xs transition shadow-lg cursor-pointer">
+          Pasar Datos a la Bitácora →
+        </button>
+      </div>
+
+      <!-- RIGHT 7 COLS: TRADE REGISTRATION & DUAL SCREENSHOT UPLOAD -->
+      <form id="trade-form" onsubmit="saveTrade(event)" class="lg:col-span-7 bg-terminal-panel border border-terminal-border rounded-2xl p-5 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-terminal-border pb-3">
+          <div>
+            <span class="text-[10px] font-mono uppercase tracking-wider text-terminal-emerald font-bold">Paso 2 · Registro Visual</span>
+            <h2 id="form-mode-title" class="text-base font-bold text-white">Registrar Operación (Apertura y Cierre)</h2>
+          </div>
+          <button type="button" id="cancel-edit-btn" onclick="resetTradeForm()" class="hidden px-3 py-1.5 rounded-lg bg-terminal-card text-xs text-terminal-muted hover:text-white cursor-pointer">
+            Cancelar Edición ✕
+          </button>
+        </div>
+
+        <input type="hidden" id="trade-id" value="" />
+
+        <!-- Row 1: Account, Pair, Session, Side -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Cuenta</label>
+            <select id="t-account" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs text-white">
+              <!-- Populated by JS -->
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Par / Activo</label>
+            <input type="text" id="t-pair" required value="XAUUSD" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono uppercase text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Sesión</label>
+            <select id="t-session" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs text-white">
+              <option value="Nueva York">Nueva York</option>
+              <option value="Londres">Londres</option>
+              <option value="Asia">Asia</option>
+              <option value="Pre-Cierre">Pre-Cierre</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Dirección</label>
+            <select id="t-side" class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-bold text-white">
+              <option value="BUY">BUY (Compra)</option>
+              <option value="SELL">SELL (Venta)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row 2: Entry, SL, TP1, TP2, Lot -->
+        <div class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Entrada</label>
+            <input type="number" id="t-entry" required step="0.00001" value="3624.00" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Stop Loss</label>
+            <input type="number" id="t-sl" required step="0.00001" value="3619.00" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">TP1</label>
+            <input type="number" id="t-tp1" step="0.00001" value="3640.00" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">TP2</label>
+            <input type="number" id="t-tp2" step="0.00001" value="3646.16" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Lote Usado</label>
+            <input type="number" id="t-lot" required step="0.01" value="0.01" class="w-full px-2.5 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs font-mono text-white" />
+          </div>
+        </div>
+
+        <!-- Row 3: Status, Close Price, PnL ($), Emotion -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-xl bg-terminal-bg/80 border border-terminal-border">
+          <div>
+            <label class="block text-[11px] text-terminal-gold font-semibold mb-1">Estado Operación</label>
+            <select id="t-status" onchange="handleStatusChange()" class="w-full px-2.5 py-2 rounded-xl bg-terminal-panel border border-terminal-border text-xs font-bold text-white">
+              <option value="OPEN">⏳ Abierta (En curso)</option>
+              <option value="WIN">✅ Ganada (TP1 / TP2)</option>
+              <option value="BE">🛡️ Breakeven (BE)</option>
+              <option value="LOSS">❌ Perdida (SL)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Precio Cierre</label>
+            <input type="number" id="t-close-price" step="0.00001" placeholder="Opcional" class="w-full px-2.5 py-2 rounded-xl bg-terminal-panel border border-terminal-border text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Resultado PnL ($)</label>
+            <input type="number" id="t-pnl" step="0.01" value="0" placeholder="Ej. 3.00 o -1.50" class="w-full px-2.5 py-2 rounded-xl bg-terminal-panel border border-terminal-border text-xs font-mono text-white" />
+          </div>
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Emoción</label>
+            <select id="t-emotion" class="w-full px-2.5 py-2 rounded-xl bg-terminal-panel border border-terminal-border text-xs text-white">
+              <option value="Paciente / Disciplinado">Paciente / Disciplinado</option>
+              <option value="Confiado">Confiado</option>
+              <option value="Ansioso / Apurado">Ansioso / Apurado</option>
+              <option value="FOMO">FOMO (Forzada)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- DUAL SCREENSHOT DROPZONES -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Screenshot 1: Entry / Opening -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-blue-400">1. Captura al Abrir (Setup)</label>
+              <span class="text-[10px] text-terminal-muted">Clic, arrastra o Ctrl+V</span>
+            </div>
+            <div id="dropzone-entry" tabindex="0" onclick="document.getElementById('file-entry').click()" ondragover="handleDragOver(event, 'dropzone-entry')" ondragleave="handleDragLeave('dropzone-entry')" ondrop="handleDrop(event, 'entry')" onpaste="handleZonePaste(event, 'entry')" class="h-40 rounded-xl border-2 border-dashed border-terminal-border hover:border-blue-400 bg-terminal-bg flex flex-col items-center justify-center p-2 text-center cursor-pointer relative overflow-hidden transition">
+              <input type="file" id="file-entry" accept="image/*" onchange="handleFileInput(event, 'entry')" class="hidden" />
+              <div id="placeholder-entry" class="space-y-1">
+                <div class="text-xl">📸</div>
+                <div class="text-[11px] font-semibold text-white">Subir captura de ENTRADA</div>
+                <div class="text-[10px] text-terminal-muted">OB / FVG / Confirmación</div>
+              </div>
+              <img id="preview-entry" src="" alt="Captura Entrada" class="hidden w-full h-full object-contain rounded-lg" />
+              <button type="button" id="clear-entry-btn" onclick="clearImage(event, 'entry')" class="hidden absolute top-2 right-2 px-2 py-0.5 rounded bg-black/80 text-white text-[10px] hover:bg-terminal-rose">Quitar ✕</button>
+            </div>
+          </div>
+
+          <!-- Screenshot 2: Exit / Result -->
+          <div class="space-y-1.5">
+            <div class="flex items-center justify-between">
+              <label class="text-xs font-bold text-terminal-emerald">2. Captura al Cerrar (Resultado)</label>
+              <span class="text-[10px] text-terminal-muted">Sube cuando cierre</span>
+            </div>
+            <div id="dropzone-exit" tabindex="0" onclick="document.getElementById('file-exit').click()" ondragover="handleDragOver(event, 'dropzone-exit')" ondragleave="handleDragLeave('dropzone-exit')" ondrop="handleDrop(event, 'exit')" onpaste="handleZonePaste(event, 'exit')" class="h-40 rounded-xl border-2 border-dashed border-terminal-border hover:border-terminal-emerald bg-terminal-bg flex flex-col items-center justify-center p-2 text-center cursor-pointer relative overflow-hidden transition">
+              <input type="file" id="file-exit" accept="image/*" onchange="handleFileInput(event, 'exit')" class="hidden" />
+              <div id="placeholder-exit" class="space-y-1">
+                <div class="text-xl">🏁</div>
+                <div class="text-[11px] font-semibold text-white">Subir captura de CIERRE</div>
+                <div class="text-[10px] text-terminal-muted">Cómo terminó el trade</div>
+              </div>
+              <img id="preview-exit" src="" alt="Captura Cierre" class="hidden w-full h-full object-contain rounded-lg" />
+              <button type="button" id="clear-exit-btn" onclick="clearImage(event, 'exit')" class="hidden absolute top-2 right-2 px-2 py-0.5 rounded bg-black/80 text-white text-[10px] hover:bg-terminal-rose">Quitar ✕</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Confluence & Notes + Plan Checkbox -->
+        <div class="space-y-3">
+          <div>
+            <label class="block text-[11px] text-terminal-muted mb-1">Confirmación Técnica / Notas y Lección</label>
+            <input type="text" id="t-notes" placeholder="Ej. Confirmación en OB 5m + rechazo en zona 3624. Cerrado en TP1 antes de las 11 AM." class="w-full px-3 py-2 rounded-xl bg-terminal-bg border border-terminal-border text-xs text-white" />
+          </div>
+
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <label class="flex items-center gap-2 text-xs text-white cursor-pointer">
+              <input type="checkbox" id="t-plan-followed" checked class="w-4 h-4 accent-terminal-emerald rounded" />
+              <span>¿Respeté mi plan y confirmación al 100%?</span>
+            </label>
+
+            <label id="auto-balance-wrapper" class="flex items-center gap-2 text-xs text-terminal-gold cursor-pointer">
+              <input type="checkbox" id="t-update-balance" checked class="w-4 h-4 accent-terminal-gold rounded" />
+              <span>Sumar/restar PnL al balance de la cuenta</span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-xl bg-terminal-emerald hover:bg-emerald-400 text-black font-extrabold text-xs transition shadow-lg cursor-pointer">
+          💾 Guardar Operación y Capturas en el Host
+        </button>
+      </form>
+    </section>
+
+    <!-- ==================== VISUAL TRADE GALLERY & HISTORY ==================== -->
+    <section class="space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+          <h2 class="text-lg font-bold text-white">Historial Visual de Operaciones (Antes vs. Después)</h2>
+          <p class="text-xs text-terminal-muted">Haz clic en las miniaturas para comparar la entrada y el cierre en pantalla completa, o actualiza una operación abierta.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <select id="filter-status" onchange="renderDashboardAndTrades()" class="px-3 py-2 rounded-xl bg-terminal-panel border border-terminal-border text-xs text-white">
+            <option value="ALL">Todos los estados</option>
+            <option value="OPEN">⏳ Solo Abiertas</option>
+            <option value="WIN">✅ Solo Ganadas</option>
+            <option value="LOSS">❌ Solo Perdidas</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="trades-gallery" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- Trade cards rendered by JS -->
+      </div>
+    </section>
+
   </main>
 
-  <div id="toast" class="toast" aria-live="polite">Procesando…</div>
-
-  <!-- Firebase v8 -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
+  <!-- ==================== JAVASCRIPT (INDEXEDDB + LOCALSTORAGE ENGINE) ==================== -->
   <script>
-    // ===== Firebase =====
-    const firebaseConfig = {
-      apiKey: "AIzaSyD_v8yXx1W6zcGFXXMHeNJh0RSzbnO-j84",
-      authDomain: "herplus.firebaseapp.com",
-      projectId: "herplus",
-      storageBucket: "herplus.appspot.com",
-      messagingSenderId: "556494279952",
-      appId: "1:556494279952:web:f788776f50840b28434195"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
+    // --- DATABASE & STORAGE CONFIGURATION ---
+    const DB_NAME = 'TradingBitacoraHostDB';
+    const DB_VERSION = 1;
+    const STORE_TRADES = 'trades';
+    let db = null;
 
-    // ===== Config locales =====
-    const OFFICE_URL = new URL("oficina.html", window.location.href).href; // Redirige a Oficina al terminar
+    // Default Accounts tailored to user's real workflow
+    const DEFAULT_ACCOUNTS = [
+      { id: 'acc-personal', name: 'Cuenta Personal (Centavos)', balance: 30.14, initialBalance: 22.00, type: 'Personal' },
+      { id: 'acc-prop10k', name: 'Cuenta Fondeo $10k (Rescate)', balance: 9050.00, initialBalance: 10000.00, type: 'Fondeo' }
+    ];
 
-    // ✅ UID/Username corporativo por defecto (mismo valor simbólico usado en el panel)
-    const ADMIN_UID_DEFAULT = "HERPLUS";
-    const ADMIN_USERNAME_DEFAULT = "HERPLUS";
+    const DEFAULT_PRE_CHECKLIST = [
+      { id: 'p1', label: 'Calendario económico revisado', done: true },
+      { id: 'p2', label: 'Tendencia 1D/4H clara', done: true },
+      { id: 'p3', label: 'Zona OB / FVG marcada', done: false },
+      { id: 'p4', label: 'Esperando confirmación (0 FOMO)', done: false }
+    ];
 
-    // ===== Utils =====
-    const $ = (id)=>document.getElementById(id);
-    function toast(msg="Listo"){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1500); }
-    function setMsg(el, msg, ok=false){ el.textContent = msg; el.className = "text-xs mt-1 " + (ok ? "text-emerald-600" : "text-rose-600"); }
-    function getParam(name){ return new URLSearchParams(location.search).get(name) || ""; }
-    const reUser = /^[a-zA-Z0-9_]{3,20}$/;
-    const rePhoneIntl = /^\+\d{8,15}$/;
-    function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test((v||"").trim()); }
-    function norm(v){ return (v||"").trim(); }
-    function addOk(el){ el.classList.remove("input-bad"); el.classList.add("input-ok"); }
-    function addBad(el){ el.classList.remove("input-ok"); el.classList.add("input-bad"); }
-    function clearMark(el){ el.classList.remove("input-ok","input-bad"); }
+    let accounts = JSON.parse(localStorage.getItem('bt_host_accounts')) || DEFAULT_ACCOUNTS;
+    let preChecklist = JSON.parse(localStorage.getItem('bt_host_checklist')) || DEFAULT_PRE_CHECKLIST;
+    let allTrades = [];
+    let currentEntryImage = '';
+    let currentExitImage = '';
 
-    async function usernameDisponible(u){
-      const qs = await db.collection("users").where("username","==",u).limit(1).get();
-      return qs.empty;
-    }
-    async function getUserDocById(id){
-      const s = await db.collection("users").doc(id).get();
-      if(!s.exists) return null;
-      const d = s.data() || {};
-      return { id, username: d.username || id, exists: true };
-    }
-    async function getUserDocByUsername(username){
-      const qs = await db.collection("users").where("username","==",username).limit(1).get();
-      if(qs.empty) return null;
-      const doc = qs.docs[0]; const d = doc.data() || {};
-      return { id: doc.id, username: d.username || doc.id, exists: true };
-    }
-    function looksLikeUid(s){ return /^[A-Za-z0-9._-]{16,40}$/.test(s||""); }
-
-    // ===== Resolver sponsor (?ref=UID o ?ref=@usuario). Si no, HERPLUS. =====
-    const sponsor = { id:null, username:null, exists:false };
-    (async function initSponsor(){
-      const tag = $("sponsorStatus"), name = $("sponsorUser");
-      const ref = getParam("ref")?.replace(/^@/,"");
-
-      if(ref){
-        try{
-          let got = looksLikeUid(ref) ? await getUserDocById(ref) : await getUserDocByUsername(ref);
-          if(!got){ got = looksLikeUid(ref) ? await getUserDocByUsername(ref) : await getUserDocById(ref); }
-          if(got){
-            Object.assign(sponsor, got, { exists:true });
-            tag.textContent = "Verificado";
-            tag.className = "px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 text-xs";
-            name.textContent = "@"+sponsor.username;
-            return;
+    // --- INITIALIZE INDEXEDDB ---
+    function initIndexedDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = (e) => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains(STORE_TRADES)) {
+            database.createObjectStore(STORE_TRADES, { keyPath: 'id' });
           }
-        }catch(_){}
-      }
-      // Fallback fijo → HERPLUS (corporativo)
-      sponsor.id = ADMIN_UID_DEFAULT;
-      sponsor.username = ADMIN_USERNAME_DEFAULT || ADMIN_UID_DEFAULT;
-      sponsor.exists = true;
-      tag.textContent = "Asignado";
-      tag.className = "px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 text-xs";
-      name.textContent = "@"+sponsor.username + " (corporativo)";
-    })();
-
-    // ===== UI: mostrar/ocultar contraseñas =====
-    function togglePwd(btnId, inputId){
-      $(btnId).addEventListener("click", ()=>{
-        const i=$(inputId); i.type = i.type==="password" ? "text" : "password"; i.focus();
+        };
+        request.onsuccess = (e) => {
+          db = e.target.result;
+          resolve(db);
+        };
+        request.onerror = (e) => {
+          console.error('Error IndexedDB:', e);
+          reject(e);
+        };
       });
     }
-    togglePwd("toggle1","pass");
-    togglePwd("toggle2","pass2");
 
-    // ===== Chequeo en vivo de username =====
-    let userTimer=null, lastChecked="";
-    $("username").addEventListener("input", ()=>{
-      const i = $("username"); const badge = $("userChk");
-      clearMark(i); badge.textContent = "…";
-      const v = norm(i.value);
-      if(!reUser.test(v)){ badge.textContent = "inválido"; addBad(i); return; }
-      if(userTimer) clearTimeout(userTimer);
-      userTimer = setTimeout(async ()=>{
-        if(v===lastChecked) return;
-        lastChecked = v;
-        try{
-          const ok = await usernameDisponible(v);
-          if(ok){ badge.textContent = "disponible"; addOk(i); }
-          else  { badge.textContent = "ocupado"; addBad(i); }
-        }catch{ badge.textContent = "error"; addBad(i); }
-      }, 350);
-    });
+    function dbGetAllTrades() {
+      return new Promise((resolve) => {
+        if (!db) return resolve([]);
+        const tx = db.transaction(STORE_TRADES, 'readonly');
+        const store = tx.objectStore(STORE_TRADES);
+        const req = store.getAll();
+        req.onsuccess = () => {
+          const sorted = (req.result || []).sort((a, b) => b.createdAt - a.createdAt);
+          resolve(sorted);
+        };
+        req.onerror = () => resolve([]);
+      });
+    }
 
-    // Enter para enviar
-    ["username","email","pass","pass2","whats"].forEach(id=>{
-      $(id).addEventListener("keydown",(e)=>{ if(e.key==="Enter") $("submitBtn").click(); });
-    });
+    function dbPutTrade(trade) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_TRADES, 'readwrite');
+        const store = tx.objectStore(STORE_TRADES);
+        const req = store.put(trade);
+        req.onsuccess = () => resolve();
+        req.onerror = (e) => reject(e);
+      });
+    }
 
-    // ===== Registro =====
-    $("submitBtn").addEventListener("click", async ()=>{
-      const msg = $("formMsg"); setMsg(msg, "");
+    function dbDeleteTrade(id) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_TRADES, 'readwrite');
+        const store = tx.objectStore(STORE_TRADES);
+        const req = store.delete(id);
+        req.onsuccess = () => resolve();
+        req.onerror = (e) => reject(e);
+      });
+    }
 
-      const username = norm($("username").value);
-      const email = norm($("email").value);
-      const pass = $("pass").value;
-      const pass2 = $("pass2").value;
-      const whats = norm($("whats").value);
-      const terms = $("terms").checked;
+    // --- SAMPLE INITIAL DEMO TRADE (IF EMPTY) ---
+    function generateSampleChart(label, color) {
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="420" viewBox="0 0 800 420">
+        <rect width="800" height="420" fill="#0f172a"/>
+        <g stroke="#1e293b" stroke-width="1">
+          <line x1="0" y1="90" x2="800" y2="90"/><line x1="0" y1="180" x2="800" y2="180"/>
+          <line x1="0" y1="270" x2="800" y2="270"/><line x1="250" y1="0" x2="250" y2="420"/>
+          <line x1="550" y1="0" x2="550" y2="420"/>
+        </g>
+        <text x="24" y="38" fill="#f8fafc" font-family="monospace" font-size="16" font-weight="bold">${label}</text>
+        <rect x="340" y="90" width="340" height="150" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-dasharray="5,5"/>
+        <line x1="340" y1="240" x2="680" y2="240" stroke="#3b82f6" stroke-width="2.5"/>
+        <rect x="340" y="240" width="340" height="65" fill="#f43f5e" fill-opacity="0.15" stroke="#f43f5e" stroke-dasharray="5,5"/>
+        <path d="M 120 140 L 180 210 L 240 275 L 300 250 L 360 238 L 460 165 L 590 105" fill="none" stroke="${color}" stroke-width="3.5"/>
+      </svg>`;
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    }
 
-      // Validaciones
-      if(!reUser.test(username)) return setMsg(msg,"Usuario inválido. Usa 3–20 caracteres (letras, números, _).");
-      if(!email || !validEmail(email)) return setMsg(msg,"Correo inválido.");
-      if(!pass || pass.length<6) return setMsg(msg,"La contraseña debe tener al menos 6 caracteres.");
-      if(pass !== pass2) return setMsg(msg,"Las contraseñas no coinciden.");
-      if(!rePhoneIntl.test(whats)) return setMsg(msg,"WhatsApp inválido. Usa formato +código y número (8–15 dígitos).");
-      if(!terms) return setMsg(msg,"Debes aceptar los términos para continuar.");
+    // --- BOOTSTRAP APP ---
+    window.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await initIndexedDB();
+        allTrades = await dbGetAllTrades();
 
-      try{
-        toast("Validando usuario…");
-        const libre = await usernameDisponible(username);
-        if(!libre) return setMsg(msg,"Ese usuario ya existe. Prueba otro.");
-
-        toast("Creando cuenta…");
-        const cred = await auth.createUserWithEmailAndPassword(email, pass);
-        const uid = cred.user.uid;
-        try{ await cred.user.updateProfile({ displayName: username }); }catch(_){}
-
-        // Sponsor definitivo (HERPLUS por defecto)
-        const sponsorId = sponsor?.id || ADMIN_UID_DEFAULT;
-        const sponsorUsername = sponsor?.username || ADMIN_USERNAME_DEFAULT || null;
-
-        // Documento principal del usuario
-        const now = firebase.firestore.FieldValue.serverTimestamp();
-        await db.collection("users").doc(uid).set({
-          uid,
-          username,
-          email,
-          whatsapp: whats,
-          sponsorId,
-          sponsorUsername,
-          placementParentId: sponsorId,
-          depth: 0,
-          status: "pending",
-          createdAt: now,
-          updatedAt: now,
-          rank: { level:0, name:"Sin rango", badge:"⬜", updatedAt: now }
-        }, { merge: true });
-
-        // Wallet opcional en 0 (si no existe)
-        await db.collection("wallets").doc(uid).set({ balance: 0 }, { merge: true });
-
-        setMsg(msg, "Registro completado. Redirigiendo a tu Oficina…", true);
-        toast("¡Bienvenido a HERPLUS!");
-        setTimeout(()=>{ location.href = OFFICE_URL; }, 900);
-      }catch(e){
-        console.error(e);
-        const code = e?.code || "";
-        if(code==="auth/email-already-in-use") return setMsg(msg,"Ese correo ya está en uso.");
-        if(code==="auth/invalid-email") return setMsg(msg,"Correo inválido.");
-        if(code==="auth/weak-password") return setMsg(msg,"La contraseña es muy débil (mínimo 6).");
-        setMsg(msg, e?.message || "No se pudo crear la cuenta.");
+        // Seed 1 realistic example trade on first launch so user sees how Before/After looks
+        if (allTrades.length === 0 && !localStorage.getItem('bt_host_seeded')) {
+          const sampleTrade = {
+            id: 'tr-sample-1',
+            createdAt: Date.now(),
+            dateStr: new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+            accountId: 'acc-personal',
+            pair: 'XAUUSD',
+            session: 'Nueva York',
+            side: 'BUY',
+            entry: 3624.00,
+            sl: 3619.00,
+            tp1: 3640.00,
+            tp2: 3646.16,
+            closePrice: 3638.79,
+            lot: 0.01,
+            status: 'WIN',
+            pnl: 3.00,
+            emotion: 'Paciente / Disciplinado',
+            notes: 'Esperé confirmación en OB 5m (3622-3625) antes de las 11 AM y aseguré ganancia sin forzar.',
+            planFollowed: true,
+            entryImage: generateSampleChart('XAUUSD 5m · ENTRADA EN OB 3624.00', '#3b82f6'),
+            exitImage: generateSampleChart('XAUUSD 5m · CIERRE TP1 +$3.00', '#10b981')
+          };
+          await dbPutTrade(sampleTrade);
+          localStorage.setItem('bt_host_seeded', '1');
+          allTrades = await dbGetAllTrades();
+        }
+      } catch (err) {
+        showToast('Aviso: Usando respaldo temporal en memoria.', 'gold');
       }
+
+      renderPreChecklist();
+      populateAccountSelectors();
+      syncCalculatorWithAccount();
+      renderDashboardAndTrades();
+      setupGlobalPasteHandler();
     });
+
+    // --- TOAST NOTIFICATIONS ---
+    function showToast(msg, type = 'success') {
+      const container = document.getElementById('toast-container');
+      const div = document.createElement('div');
+      const styles = {
+        success: 'bg-terminal-panel border-terminal-emerald text-terminal-emerald',
+        gold: 'bg-terminal-panel border-terminal-gold text-terminal-gold',
+        error: 'bg-terminal-panel border-terminal-rose text-terminal-rose'
+      };
+      div.className = `pointer-events-auto p-3.5 rounded-xl border shadow-xl text-xs font-semibold flex items-center justify-between gap-2 ${styles[type] || styles.success}`;
+      div.innerHTML = `<span>${msg}</span><button onclick="this.parentElement.remove()" class="text-terminal-muted hover:text-white">✕</button>`;
+      container.appendChild(div);
+      setTimeout(() => { if (div.parentElement) div.remove(); }, 4000);
+    }
+
+    // --- PRE-SESSION CHECKLIST ---
+    function renderPreChecklist() {
+      const bar = document.getElementById('pre-checklist-bar');
+      bar.innerHTML = preChecklist.map((item, idx) => `
+        <button type="button" onclick="togglePreCheck(${idx})" class="px-3 py-1.5 rounded-xl border text-xs flex items-center gap-2 transition cursor-pointer ${item.done ? 'bg-terminal-emerald/15 border-terminal-emerald/40 text-terminal-emerald font-semibold' : 'bg-terminal-bg border-terminal-border text-terminal-muted hover:text-white'}">
+          <span>${item.done ? '✓' : '○'}</span>
+          <span>${item.label}</span>
+        </button>
+      `).join('');
+    }
+
+    function togglePreCheck(idx) {
+      preChecklist[idx].done = !preChecklist[idx].done;
+      localStorage.setItem('bt_host_checklist', JSON.stringify(preChecklist));
+      renderPreChecklist();
+    }
+
+    // --- ACCOUNTS MANAGEMENT ---
+    function populateAccountSelectors() {
+      const filterSel = document.getElementById('filter-account');
+      const calcSel = document.getElementById('calc-account');
+      const tradeSel = document.getElementById('t-account');
+
+      const currentFilter = filterSel.value || 'ALL';
+      filterSel.innerHTML = `<option value="ALL">Todas las Cuentas (${accounts.length})</option>` +
+        accounts.map(a => `<option value="${a.id}">${a.name} ($${Number(a.balance).toFixed(2)})</option>`).join('');
+      filterSel.value = currentFilter;
+
+      const optionsHtml = accounts.map(a => `<option value="${a.id}">${a.name} ($${Number(a.balance).toFixed(2)})</option>`).join('');
+      calcSel.innerHTML = optionsHtml;
+      tradeSel.innerHTML = optionsHtml;
+
+      renderAccountsModalList();
+    }
+
+    function toggleAccountsModal(show) {
+      const modal = document.getElementById('accounts-modal');
+      modal.classList.toggle('hidden', !show);
+      modal.classList.toggle('flex', show);
+      if (show) renderAccountsModalList();
+    }
+
+    function renderAccountsModalList() {
+      const list = document.getElementById('accounts-list-modal');
+      list.innerHTML = accounts.map(acc => `
+        <div class="p-3 rounded-xl bg-terminal-bg border border-terminal-border flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div class="text-xs font-bold text-white">${acc.name}</div>
+            <div class="text-[11px] text-terminal-muted">Tipo: ${acc.type}</div>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="number" step="0.01" value="${Number(acc.balance).toFixed(2)}" onchange="updateAccountBalanceManual('${acc.id}', this.value)" class="w-28 px-2.5 py-1.5 rounded-lg bg-terminal-panel border border-terminal-border text-xs font-mono text-terminal-gold text-right" />
+            ${accounts.length > 1 ? `<button onclick="deleteAccount('${acc.id}')" class="text-terminal-muted hover:text-terminal-rose text-xs px-1.5 cursor-pointer" title="Eliminar cuenta">✕</button>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function addNewAccount(e) {
+      e.preventDefault();
+      const name = document.getElementById('new-acc-name').value.trim();
+      const balance = parseFloat(document.getElementById('new-acc-balance').value) || 0;
+      const type = document.getElementById('new-acc-type').value;
+
+      accounts.push({
+        id: 'acc-' + Date.now(),
+        name,
+        balance,
+        initialBalance: balance,
+        type
+      });
+      localStorage.setItem('bt_host_accounts', JSON.stringify(accounts));
+      document.getElementById('new-acc-name').value = '';
+      document.getElementById('new-acc-balance').value = '';
+      populateAccountSelectors();
+      renderDashboardAndTrades();
+      showToast(`Cuenta "${name}" agregada`, 'success');
+    }
+
+    function updateAccountBalanceManual(accId, newBal) {
+      const val = parseFloat(newBal);
+      if (isNaN(val)) return;
+      accounts = accounts.map(a => a.id === accId ? { ...a, balance: val } : a);
+      localStorage.setItem('bt_host_accounts', JSON.stringify(accounts));
+      populateAccountSelectors();
+      syncCalculatorWithAccount();
+      renderDashboardAndTrades();
+      showToast('Balance actualizado', 'success');
+    }
+
+    function deleteAccount(accId) {
+      accounts = accounts.filter(a => a.id !== accId);
+      localStorage.setItem('bt_host_accounts', JSON.stringify(accounts));
+      populateAccountSelectors();
+      renderDashboardAndTrades();
+    }
+
+    // --- RISK & LOT CALCULATOR ---
+    function syncCalculatorWithAccount() {
+      const accId = document.getElementById('calc-account').value;
+      const acc = accounts.find(a => a.id === accId) || accounts[0];
+      if (acc) {
+        document.getElementById('calc-balance').value = Number(acc.balance).toFixed(2);
+        document.getElementById('t-account').value = acc.id;
+      }
+      calculatePosition();
+    }
+
+    function calculatePosition() {
+      const pair = document.getElementById('calc-pair').value.trim().toUpperCase();
+      const balance = parseFloat(document.getElementById('calc-balance').value) || 0;
+      const riskPct = parseFloat(document.getElementById('calc-risk-pct').value) || 0;
+      const entry = parseFloat(document.getElementById('calc-entry').value) || 0;
+      const sl = parseFloat(document.getElementById('calc-sl').value) || 0;
+      const tp1 = parseFloat(document.getElementById('calc-tp1').value) || 0;
+      const tp2 = parseFloat(document.getElementById('calc-tp2').value) || 0;
+
+      const riskUsd = balance * (riskPct / 100);
+      const slDist = Math.abs(entry - sl);
+      const tp1Dist = Math.abs(tp1 - entry);
+      const tp2Dist = Math.abs(tp2 - entry);
+
+      // Contract multiplier estimation per standard lot
+      let multiplier = 100; // Default Gold (XAUUSD: 1.00 lot = $100 per $1 move)
+      if (/EUR|GBP|AUD|NZD|USDJPY|USDCAD|USDCHF/.test(pair) && !pair.includes('XAU') && !pair.includes('BTC')) {
+        multiplier = pair.includes('JPY') ? 1000 : 100000;
+      } else if (/BTC|ETH|US30|NAS100|SPX/.test(pair)) {
+        multiplier = 1;
+      }
+
+      const rawLot = slDist > 0 ? riskUsd / (slDist * multiplier) : 0;
+      const recommendedLot = Math.max(0.01, Number(rawLot.toFixed(2)));
+      const actualRiskAtMinLot = slDist * multiplier * recommendedLot;
+
+      const rr1 = slDist > 0 ? (tp1Dist / slDist).toFixed(1) : '0.0';
+      const rr2 = slDist > 0 ? (tp2Dist / slDist).toFixed(1) : '0.0';
+
+      const tp1Profit = tp1Dist * multiplier * recommendedLot;
+      const tp2Profit = tp2Dist * multiplier * recommendedLot;
+
+      document.getElementById('calc-res-lot').textContent = recommendedLot.toFixed(2);
+      document.getElementById('calc-res-lot-note').textContent = rawLot < 0.01
+        ? `Exacto: ${rawLot.toFixed(3)} (mín. 0.01)`
+        : `Óptimo para ${riskPct}% de riesgo`;
+
+      document.getElementById('calc-res-risk-usd').textContent = `$${actualRiskAtMinLot.toFixed(2)}`;
+      document.getElementById('calc-res-sl-pts').textContent = `SL: ${slDist.toFixed(2)} pts`;
+      document.getElementById('calc-rr1').textContent = `1:${rr1}`;
+      document.getElementById('calc-rr2').textContent = `1:${rr2}`;
+      document.getElementById('calc-tp1-usd').textContent = `+$${tp1Profit.toFixed(2)}`;
+      document.getElementById('calc-tp2-usd').textContent = `+$${tp2Profit.toFixed(2)}`;
+
+      const alertBox = document.getElementById('calc-alert');
+      const realRiskPct = balance > 0 ? (actualRiskAtMinLot / balance) * 100 : 0;
+      if (realRiskPct > 5) {
+        alertBox.className = 'p-2.5 rounded-lg bg-terminal-rose/15 border border-terminal-rose/40 text-[11px] text-terminal-rose';
+        alertBox.textContent = `⚠ Precaución: Con 0.01 lotes este SL arriesga $${actualRiskAtMinLot.toFixed(2)} (${realRiskPct.toFixed(1)}% de tu capital).`;
+      } else {
+        alertBox.className = 'p-2.5 rounded-lg bg-terminal-emerald/10 border border-terminal-emerald/30 text-[11px] text-terminal-emerald';
+        alertBox.textContent = `✓ Riesgo saludable (${realRiskPct.toFixed(1)}% real del capital).`;
+      }
+    }
+
+    function sendCalculatorToForm() {
+      document.getElementById('t-account').value = document.getElementById('calc-account').value;
+      document.getElementById('t-pair').value = document.getElementById('calc-pair').value.toUpperCase();
+      document.getElementById('t-side').value = document.getElementById('calc-side').value;
+      document.getElementById('t-entry').value = document.getElementById('calc-entry').value;
+      document.getElementById('t-sl').value = document.getElementById('calc-sl').value;
+      document.getElementById('t-tp1').value = document.getElementById('calc-tp1').value;
+      document.getElementById('t-tp2').value = document.getElementById('calc-tp2').value;
+      document.getElementById('t-lot').value = document.getElementById('calc-res-lot').textContent;
+      document.getElementById('t-status').value = 'OPEN';
+      handleStatusChange();
+
+      document.getElementById('trade-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('Parámetros enviados al formulario. ¡Sube tu captura de apertura!', 'gold');
+    }
+
+    // --- IMAGE COMPRESSION & DUAL UPLOAD HANDLERS ---
+    function compressImageFile(file) {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          const img = new Image();
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            const maxWidth = 1280;
+            let w = img.width;
+            let h = img.height;
+            if (w > maxWidth) {
+              h = Math.round((h * maxWidth) / w);
+              w = maxWidth;
+            }
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+          };
+          img.src = ev.target.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function setZoneImage(slot, fileOrDataUrl) {
+      let dataUrl = '';
+      if (typeof fileOrDataUrl === 'string') {
+        dataUrl = fileOrDataUrl;
+      } else {
+        dataUrl = await compressImageFile(fileOrDataUrl);
+      }
+
+      if (slot === 'entry') {
+        currentEntryImage = dataUrl;
+        document.getElementById('preview-entry').src = dataUrl;
+        document.getElementById('preview-entry').classList.remove('hidden');
+        document.getElementById('placeholder-entry').classList.add('hidden');
+        document.getElementById('clear-entry-btn').classList.remove('hidden');
+      } else {
+        currentExitImage = dataUrl;
+        document.getElementById('preview-exit').src = dataUrl;
+        document.getElementById('preview-exit').classList.remove('hidden');
+        document.getElementById('placeholder-exit').classList.add('hidden');
+        document.getElementById('clear-exit-btn').classList.remove('hidden');
+      }
+    }
+
+    function clearImage(e, slot) {
+      if (e) e.stopPropagation();
+      if (slot === 'entry') {
+        currentEntryImage = '';
+        document.getElementById('file-entry').value = '';
+        document.getElementById('preview-entry').classList.add('hidden');
+        document.getElementById('placeholder-entry').classList.remove('hidden');
+        document.getElementById('clear-entry-btn').classList.add('hidden');
+      } else {
+        currentExitImage = '';
+        document.getElementById('file-exit').value = '';
+        document.getElementById('preview-exit').classList.add('hidden');
+        document.getElementById('placeholder-exit').classList.remove('hidden');
+        document.getElementById('clear-exit-btn').classList.add('hidden');
+      }
+    }
+
+    function handleFileInput(e, slot) {
+      const file = e.target.files[0];
+      if (file) setZoneImage(slot, file);
+    }
+
+    function handleDragOver(e, zoneId) {
+      e.preventDefault();
+      document.getElementById(zoneId).classList.add('drop-active');
+    }
+
+    function handleDragLeave(zoneId) {
+      document.getElementById(zoneId).classList.remove('drop-active');
+    }
+
+    function handleDrop(e, slot) {
+      e.preventDefault();
+      handleDragLeave(slot === 'entry' ? 'dropzone-entry' : 'dropzone-exit');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        setZoneImage(slot, file);
+      }
+    }
+
+    function handleZonePaste(e, slot) {
+      const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+      for (const item of items) {
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          e.stopPropagation();
+          setZoneImage(slot, item.getAsFile());
+          showToast(`Captura pegada en ${slot === 'entry' ? 'ENTRADA' : 'CIERRE'}`, 'gold');
+          break;
+        }
+      }
+    }
+
+    function setupGlobalPasteHandler() {
+      window.addEventListener('paste', (e) => {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (const item of items) {
+          if (item.type.startsWith('image/')) {
+            const targetSlot = !currentEntryImage ? 'entry' : 'exit';
+            setZoneImage(targetSlot, item.getAsFile());
+            showToast(`Captura pegada automáticamente en ${targetSlot === 'entry' ? '1. ENTRADA' : '2. CIERRE'}`, 'gold');
+            break;
+          }
+        }
+      });
+    }
+
+    // --- SAVE, EDIT & CLOSE TRADES ---
+    function handleStatusChange() {
+      const status = document.getElementById('t-status').value;
+      const wrapper = document.getElementById('auto-balance-wrapper');
+      wrapper.classList.toggle('opacity-40', status === 'OPEN');
+    }
+
+    async function saveTrade(e) {
+      e.preventDefault();
+      const existingId = document.getElementById('trade-id').value;
+      const accountId = document.getElementById('t-account').value;
+      const status = document.getElementById('t-status').value;
+      const pnl = status === 'OPEN' ? 0 : (parseFloat(document.getElementById('t-pnl').value) || 0);
+      const shouldUpdateBalance = document.getElementById('t-update-balance').checked && status !== 'OPEN';
+
+      const prevTrade = existingId ? allTrades.find(t => t.id === existingId) : null;
+
+      const tradeObj = {
+        id: existingId || 'tr-' + Date.now(),
+        createdAt: prevTrade ? prevTrade.createdAt : Date.now(),
+        dateStr: prevTrade ? prevTrade.dateStr : new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        accountId,
+        pair: document.getElementById('t-pair').value.trim().toUpperCase(),
+        session: document.getElementById('t-session').value,
+        side: document.getElementById('t-side').value,
+        entry: parseFloat(document.getElementById('t-entry').value) || 0,
+        sl: parseFloat(document.getElementById('t-sl').value) || 0,
+        tp1: parseFloat(document.getElementById('t-tp1').value) || 0,
+        tp2: parseFloat(document.getElementById('t-tp2').value) || 0,
+        closePrice: parseFloat(document.getElementById('t-close-price').value) || null,
+        lot: parseFloat(document.getElementById('t-lot').value) || 0.01,
+        status,
+        pnl,
+        emotion: document.getElementById('t-emotion').value,
+        notes: document.getElementById('t-notes').value.trim() || 'Sin notas adicionales.',
+        planFollowed: document.getElementById('t-plan-followed').checked,
+        entryImage: currentEntryImage,
+        exitImage: currentExitImage
+      };
+
+      await dbPutTrade(tradeObj);
+
+      // Adjust account balance cleanly (accounting for edits)
+      if (shouldUpdateBalance) {
+        const prevAppliedPnl = (prevTrade && prevTrade.balanceApplied) ? Number(prevTrade.pnl) : 0;
+        const deltaPnl = pnl - prevAppliedPnl;
+        accounts = accounts.map(acc => acc.id === accountId
+          ? { ...acc, balance: Number((Number(acc.balance) + deltaPnl).toFixed(2)) }
+          : acc
+        );
+        tradeObj.balanceApplied = true;
+        await dbPutTrade(tradeObj);
+        localStorage.setItem('bt_host_accounts', JSON.stringify(accounts));
+        populateAccountSelectors();
+        syncCalculatorWithAccount();
+      }
+
+      allTrades = await dbGetAllTrades();
+      resetTradeForm();
+      renderDashboardAndTrades();
+      showToast(existingId ? '¡Operación actualizada con éxito!' : '¡Operación guardada en tu Bitácora!', 'success');
+    }
+
+    function editOrCloseTrade(id) {
+      const tr = allTrades.find(t => t.id === id);
+      if (!tr) return;
+
+      document.getElementById('trade-id').value = tr.id;
+      document.getElementById('form-mode-title').textContent = `Editando / Cerrando: ${tr.pair} (${tr.side})`;
+      document.getElementById('cancel-edit-btn').classList.remove('hidden');
+
+      document.getElementById('t-account').value = tr.accountId;
+      document.getElementById('t-pair').value = tr.pair;
+      document.getElementById('t-session').value = tr.session;
+      document.getElementById('t-side').value = tr.side;
+      document.getElementById('t-entry').value = tr.entry;
+      document.getElementById('t-sl').value = tr.sl;
+      document.getElementById('t-tp1').value = tr.tp1;
+      document.getElementById('t-tp2').value = tr.tp2;
+      document.getElementById('t-close-price').value = tr.closePrice || '';
+      document.getElementById('t-lot').value = tr.lot;
+      document.getElementById('t-status').value = tr.status === 'OPEN' ? 'WIN' : tr.status;
+      document.getElementById('t-pnl').value = tr.pnl;
+      document.getElementById('t-emotion').value = tr.emotion;
+      document.getElementById('t-notes').value = tr.notes;
+      document.getElementById('t-plan-followed').checked = tr.planFollowed;
+
+      if (tr.entryImage) setZoneImage('entry', tr.entryImage); else clearImage(null, 'entry');
+      if (tr.exitImage) setZoneImage('exit', tr.exitImage); else clearImage(null, 'exit');
+
+      handleStatusChange();
+      document.getElementById('trade-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      showToast('Carga la captura final, pon el resultado PnL ($) y guarda.', 'gold');
+    }
+
+    function resetTradeForm() {
+      document.getElementById('trade-id').value = '';
+      document.getElementById('form-mode-title').textContent = 'Registrar Operación (Apertura y Cierre)';
+      document.getElementById('cancel-edit-btn').classList.add('hidden');
+      document.getElementById('t-close-price').value = '';
+      document.getElementById('t-pnl').value = '0';
+      document.getElementById('t-notes').value = '';
+      document.getElementById('t-status').value = 'OPEN';
+      clearImage(null, 'entry');
+      clearImage(null, 'exit');
+      handleStatusChange();
+    }
+
+    async function removeTrade(id) {
+      await dbDeleteTrade(id);
+      allTrades = await dbGetAllTrades();
+      renderDashboardAndTrades();
+      showToast('Operación eliminada del historial', 'gold');
+    }
+
+    // --- DASHBOARD KPIs & GALLERY RENDERING ---
+    function renderDashboardAndTrades() {
+      const selectedAccId = document.getElementById('filter-account').value || 'ALL';
+      const statusFilter = document.getElementById('filter-status').value || 'ALL';
+
+      const accTrades = selectedAccId === 'ALL'
+        ? allTrades
+        : allTrades.filter(t => t.accountId === selectedAccId);
+
+      // Compute Balance
+      let displayBalance = 0;
+      let balanceSub = '';
+      if (selectedAccId === 'ALL') {
+        displayBalance = accounts.reduce((sum, a) => sum + Number(a.balance), 0);
+        balanceSub = `${accounts.length} cuentas combinadas`;
+      } else {
+        const acc = accounts.find(a => a.id === selectedAccId);
+        displayBalance = acc ? Number(acc.balance) : 0;
+        balanceSub = acc ? acc.type : '';
+      }
+
+      const closedTrades = accTrades.filter(t => t.status !== 'OPEN');
+      const openTrades = accTrades.filter(t => t.status === 'OPEN');
+      const wins = closedTrades.filter(t => t.status === 'WIN' || Number(t.pnl) > 0);
+      const losses = closedTrades.filter(t => t.status === 'LOSS' || Number(t.pnl) < 0);
+
+      const netPnl = closedTrades.reduce((s, t) => s + Number(t.pnl), 0);
+      const grossProfit = wins.reduce((s, t) => s + Math.max(0, Number(t.pnl)), 0);
+      const grossLoss = Math.abs(losses.reduce((s, t) => s + Math.min(0, Number(t.pnl)), 0));
+      const profitFactor = grossLoss > 0 ? (grossProfit / grossLoss).toFixed(2) : (grossProfit > 0 ? '∞' : '0.00');
+      const winRate = closedTrades.length > 0 ? Math.round((wins.length / closedTrades.length) * 100) : 0;
+      const disciplinedCount = accTrades.filter(t => t.planFollowed).length;
+      const disciplinePct = accTrades.length > 0 ? Math.round((disciplinedCount / accTrades.length) * 100) : 100;
+
+      document.getElementById('kpi-balance').textContent = `$${displayBalance.toFixed(2)}`;
+      document.getElementById('kpi-balance-sub').textContent = balanceSub;
+
+      const pnlEl = document.getElementById('kpi-pnl');
+      pnlEl.textContent = `${netPnl >= 0 ? '+' : ''}$${netPnl.toFixed(2)}`;
+      pnlEl.className = `text-lg sm:text-xl font-extrabold font-mono mt-1 ${netPnl >= 0 ? 'text-terminal-emerald' : 'text-terminal-rose'}`;
+      document.getElementById('kpi-trades-count').textContent = `${closedTrades.length} cerradas`;
+
+      document.getElementById('kpi-winrate').textContent = `${winRate}%`;
+      document.getElementById('kpi-wl-ratio').textContent = `${wins.length}G / ${losses.length}P`;
+      document.getElementById('kpi-pf').textContent = profitFactor;
+      document.getElementById('kpi-discipline').textContent = `${disciplinePct}%`;
+      document.getElementById('kpi-open').textContent = openTrades.length;
+
+      // Filter list for gallery
+      const visibleTrades = statusFilter === 'ALL'
+        ? accTrades
+        : accTrades.filter(t => t.status === statusFilter);
+
+      const gallery = document.getElementById('trades-gallery');
+      if (visibleTrades.length === 0) {
+        gallery.innerHTML = `
+          <div class="col-span-full bg-terminal-panel border border-terminal-border rounded-2xl p-10 text-center">
+            <div class="text-2xl mb-2">📒</div>
+            <h3 class="text-sm font-bold text-white">No hay operaciones registradas en este filtro</h3>
+            <p class="text-xs text-terminal-muted mt-1">Usa la calculadora de la izquierda o registra tu primera entrada con captura.</p>
+          </div>
+        `;
+        return;
+      }
+
+      gallery.innerHTML = visibleTrades.map(tr => {
+        const acc = accounts.find(a => a.id === tr.accountId);
+        const accName = acc ? acc.name : 'Cuenta';
+        const statusBadge = {
+          OPEN: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-400">⏳ ABIERTA</span>',
+          WIN: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-terminal-emerald/20 text-terminal-emerald">✅ GANADA</span>',
+          BE: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/20 text-blue-400">🛡️ BREAKEVEN</span>',
+          LOSS: '<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-terminal-rose/20 text-terminal-rose">❌ PERDIDA</span>'
+        }[tr.status] || '';
+
+        const pnlVal = Number(tr.pnl);
+        const pnlText = tr.status === 'OPEN'
+          ? '<span class="text-xs font-mono text-amber-400">En curso...</span>'
+          : `<span class="text-sm font-extrabold font-mono ${pnlVal >= 0 ? 'text-terminal-emerald' : 'text-terminal-rose'}">${pnlVal >= 0 ? '+' : ''}$${pnlVal.toFixed(2)}</span>`;
+
+        return `
+          <article class="bg-terminal-panel border border-terminal-border rounded-2xl overflow-hidden flex flex-col justify-between shadow-lg">
+            <!-- Header -->
+            <div class="p-4 border-b border-terminal-border/70 flex items-center justify-between gap-2">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm font-extrabold text-white font-mono">${tr.pair}</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold ${tr.side === 'BUY' ? 'bg-terminal-emerald/20 text-terminal-emerald' : 'bg-terminal-rose/20 text-terminal-rose'}">${tr.side}</span>
+                  ${statusBadge}
+                </div>
+                <div class="text-[11px] text-terminal-muted mt-0.5">${tr.dateStr} · ${tr.session} · <span class="text-terminal-gold">${accName}</span></div>
+              </div>
+              <div class="text-right">
+                ${pnlText}
+                <div class="text-[10px] font-mono text-terminal-muted">Lote: ${tr.lot}</div>
+              </div>
+            </div>
+
+            <!-- Dual Screenshot Thumbnails (Before vs After) -->
+            <div class="grid grid-cols-2 gap-2 p-3 bg-terminal-bg/60 border-b border-terminal-border/70">
+              <!-- Entry Screenshot -->
+              <div onclick="openLightbox('${tr.id}')" class="group relative h-36 rounded-xl bg-terminal-bg border border-terminal-border overflow-hidden cursor-zoom-in flex items-center justify-center">
+                ${tr.entryImage
+                  ? `<img src="${tr.entryImage}" alt="Entrada" class="w-full h-full object-cover group-hover:scale-105 transition" />`
+                  : `<span class="text-[11px] text-terminal-muted">Sin captura entrada</span>`}
+                <span class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded bg-black/75 text-blue-400 font-mono text-[10px] font-bold">1. ENTRADA</span>
+              </div>
+
+              <!-- Exit Screenshot -->
+              <div onclick="${tr.exitImage ? `openLightbox('${tr.id}')` : `editOrCloseTrade('${tr.id}')`}" class="group relative h-36 rounded-xl bg-terminal-bg border border-terminal-border overflow-hidden cursor-pointer flex items-center justify-center">
+                ${tr.exitImage
+                  ? `<img src="${tr.exitImage}" alt="Cierre" class="w-full h-full object-cover group-hover:scale-105 transition" />`
+                  : `<div class="text-center p-2"><div class="text-xs text-terminal-emerald font-bold">+ Subir Cierre</div><div class="text-[10px] text-terminal-muted">Clic para completar</div></div>`}
+                <span class="absolute top-1.5 left-1.5 px-2 py-0.5 rounded bg-black/75 text-terminal-emerald font-mono text-[10px] font-bold">2. CIERRE</span>
+              </div>
+            </div>
+
+            <!-- Prices & Notes -->
+            <div class="p-4 space-y-2.5 text-xs">
+              <div class="grid grid-cols-4 gap-1.5 text-center font-mono text-[11px] bg-terminal-bg p-2 rounded-xl border border-terminal-border">
+                <div><span class="block text-[9px] text-terminal-muted">ENTRADA</span><strong class="text-white">${tr.entry}</strong></div>
+                <div><span class="block text-[9px] text-terminal-rose">SL</span><strong class="text-terminal-rose">${tr.sl}</strong></div>
+                <div><span class="block text-[9px] text-terminal-emerald">TP1</span><strong class="text-terminal-emerald">${tr.tp1 || '-'}</strong></div>
+                <div><span class="block text-[9px] text-terminal-gold">CIERRE</span><strong class="text-white">${tr.closePrice || '-'}</strong></div>
+              </div>
+
+              <p class="text-terminal-text leading-relaxed line-clamp-2">${tr.notes}</p>
+
+              <div class="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-terminal-border/60 text-[11px]">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded bg-terminal-card text-terminal-muted">${tr.emotion}</span>
+                  <span class="${tr.planFollowed ? 'text-terminal-emerald' : 'text-terminal-rose'} font-semibold">
+                    ${tr.planFollowed ? '✓ En Plan' : '⚠ Fuera de Plan'}
+                  </span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <button onclick="openLightbox('${tr.id}')" class="px-2.5 py-1 rounded-lg bg-terminal-card hover:bg-terminal-border text-white cursor-pointer">🔍 Ver</button>
+                  <button onclick="editOrCloseTrade('${tr.id}')" class="px-2.5 py-1 rounded-lg bg-terminal-accent/20 hover:bg-terminal-accent text-blue-300 hover:text-white font-semibold cursor-pointer">
+                    ${tr.status === 'OPEN' ? 'Cerrar / Foto' : 'Editar'}
+                  </button>
+                  <button onclick="removeTrade('${tr.id}')" class="px-2 py-1 rounded-lg hover:bg-terminal-rose/20 text-terminal-muted hover:text-terminal-rose cursor-pointer" title="Eliminar">✕</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    // --- LIGHTBOX COMPARATIVE VIEWER ---
+    function openLightbox(id) {
+      const tr = allTrades.find(t => t.id === id);
+      if (!tr) return;
+
+      document.getElementById('lb-badge').textContent = `${tr.pair} · ${tr.side} · ${tr.session}`;
+      document.getElementById('lb-title').textContent = `Comparativa Visual: Apertura vs. Resultado (${tr.dateStr})`;
+
+      document.getElementById('lb-images-grid').innerHTML = `
+        <div class="space-y-2">
+          <div class="text-xs font-bold text-blue-400">1. Captura al Abrir la Operación (Setup)</div>
+          <div class="bg-terminal-bg border border-terminal-border rounded-xl p-2 flex items-center justify-center min-h-[260px]">
+            ${tr.entryImage
+              ? `<img src="${tr.entryImage}" alt="Entrada" class="max-h-[60vh] w-auto object-contain rounded-lg" />`
+              : `<span class="text-xs text-terminal-muted">No se subió captura de entrada</span>`}
+          </div>
+        </div>
+        <div class="space-y-2">
+          <div class="text-xs font-bold text-terminal-emerald">2. Captura al Cerrar la Operación (Cómo terminó)</div>
+          <div class="bg-terminal-bg border border-terminal-border rounded-xl p-2 flex items-center justify-center min-h-[260px]">
+            ${tr.exitImage
+              ? `<img src="${tr.exitImage}" alt="Cierre" class="max-h-[60vh] w-auto object-contain rounded-lg" />`
+              : `<div class="text-center space-y-2"><p class="text-xs text-terminal-muted">Aún no has subido la captura final.</p><button onclick="closeLightbox(); editOrCloseTrade('${tr.id}')" class="px-3 py-1.5 rounded-lg bg-terminal-emerald text-black font-bold text-xs cursor-pointer">+ Subir Captura de Cierre</button></div>`}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('lb-details').innerHTML = `
+        <div class="flex flex-wrap gap-4 mb-2 font-mono">
+          <span>Entrada: <strong class="text-white">${tr.entry}</strong></span>
+          <span>SL: <strong class="text-terminal-rose">${tr.sl}</strong></span>
+          <span>TP1: <strong class="text-terminal-emerald">${tr.tp1 || '-'}</strong></span>
+          <span>Cierre: <strong class="text-white">${tr.closePrice || '-'}</strong></span>
+          <span>PnL: <strong class="${Number(tr.pnl) >= 0 ? 'text-terminal-emerald' : 'text-terminal-rose'}">${Number(tr.pnl) >= 0 ? '+' : ''}$${Number(tr.pnl).toFixed(2)}</strong></span>
+        </div>
+        <p class="text-terminal-text"><strong>Notas y Lección:</strong> ${tr.notes}</p>
+      `;
+
+      const modal = document.getElementById('lightbox-modal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeLightbox(e) {
+      if (e && e.target !== document.getElementById('lightbox-modal')) return;
+      const modal = document.getElementById('lightbox-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // --- BACKUP JSON & CSV EXPORT/IMPORT ---
+    function exportBackupJSON() {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        accounts,
+        preChecklist,
+        trades: allTrades
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `respaldo_bitacora_trading_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Respaldo JSON con todas tus capturas descargado', 'success');
+    }
+
+    function importBackupJSON(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          if (Array.isArray(data.accounts)) {
+            accounts = data.accounts;
+            localStorage.setItem('bt_host_accounts', JSON.stringify(accounts));
+          }
+          if (Array.isArray(data.trades)) {
+            for (const tr of data.trades) {
+              await dbPutTrade(tr);
+            }
+          }
+          allTrades = await dbGetAllTrades();
+          populateAccountSelectors();
+          renderDashboardAndTrades();
+          showToast('¡Respaldo restaurado correctamente!', 'success');
+        } catch (err) {
+          showToast('Archivo JSON inválido', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function exportTradesCSV() {
+      const headers = ['Fecha', 'Cuenta', 'Par', 'Sesion', 'Direccion', 'Entrada', 'SL', 'TP1', 'Cierre', 'Lote', 'Estado', 'PnL_USD', 'Emocion', 'En_Plan', 'Notas'];
+      const rows = allTrades.map(t => {
+        const acc = accounts.find(a => a.id === t.accountId);
+        return [
+          `"${t.dateStr}"`,
+          `"${acc ? acc.name : ''}"`,
+          t.pair,
+          `"${t.session}"`,
+          t.side,
+          t.entry,
+          t.sl,
+          t.tp1,
+          t.closePrice || '',
+          t.lot,
+          t.status,
+          t.pnl,
+          `"${t.emotion}"`,
+          t.planFollowed ? 'SI' : 'NO',
+          `"${(t.notes || '').replace(/"/g, '""')}"`
+        ].join(',');
+      });
+
+      const csv = [headers.join(','), ...rows].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bitacora_operaciones_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Archivo CSV exportado para Excel/Google Sheets', 'success');
+    }
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
